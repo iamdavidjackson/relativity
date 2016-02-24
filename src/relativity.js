@@ -1,8 +1,9 @@
 var $ = require("jquery");
 var _ = require("lodash");
-var ParallaxMovement = require('./parallax-movement');
 
 function Relativity (options) {
+
+	this.prefixedTransform = this.vendorPrefix('transform');
 	
 	// Define default parallax options here - These can be over-ridden by the options variable
     // passed in.
@@ -25,6 +26,12 @@ function Relativity (options) {
 
         // whether we should be supporting IE9
         ie9Support: true,
+
+        positionProperty: 'position',
+
+        supports3D: true,
+
+        backgroundPositionSupport: true,
 
         containers: []
     }
@@ -66,13 +73,7 @@ Relativity.prototype = {
         // mobile browsers require some special scrolling magic.  Instead of writing this
         // I'm just going to piggy back on some already super code...  We'll just use Skrollr.
         if(this.isSupported()) {
-            this.parallaxMovement = new ParallaxMovement({
-                parallax: this,
-                positionProperty: this.options.positionProperty,
-                supports3D: this.options.supports3D
-            });
-
-            $('html').addClass('parallax');
+            $('html').addClass('relativity');
 
             this.initEvents();
             this.onUpdateParallax();
@@ -244,11 +245,11 @@ Relativity.prototype = {
                         maxBottomOffset = bottomOffset, // if the top of the container was at the bottom of the screen
                         offsetRange = maxBottomOffset - maxTopOffset,  // the number of pixels between those two points
                         containerOffset = container.top - maxTopOffset, // where the container is within that range
-                        parallaxPercentage = 1 - containerOffset / offsetRange;  // the percentage of the way through the range
+                        percentage = 1 - containerOffset / offsetRange;  // the percentage of the way through the range
 
-                    this.triggerParallaxOnScreen(container, parallaxPercentage);
+                    this.triggerContainerOnScreen(container, percentage);
                 } else {
-                    this.triggerParallaxOffScreen(container, scrollDirection);
+                    this.triggerContainerOffScreen(container, scrollDirection);
                 }
             }
         }
@@ -262,10 +263,27 @@ Relativity.prototype = {
     *   @method triggerParallaxOnScreen
     *   @return {undefined}
     */
-    triggerParallaxOnScreen: function(container, percentage) {
-    	container.$element.addClass('parallax-onscreen');
-        container.$element.trigger('parallax:onscreen', percentage);
-        this.parallaxMovement.onParallaxOnScreen(container, percentage);
+    triggerContainerOnScreen: function(container, percentage) {
+    	container.$element.addClass('relativity-onscreen');
+        container.$element.trigger('relativity:onscreen', percentage);
+        
+        // move the elements we defined as having a parallax movement
+        for (var i = 0; i < container.elementsCount; i++) {
+
+            var element = container.elements[i],
+                movement = element.movement,
+                methodName = 'onMovement' + movement.charAt(0).toUpperCase() + movement.slice(1).toLowerCase(),
+                method = this[methodName];
+
+            // call the onMethodName if it exists
+            if (_.isFunction(method)) {
+                // pass all arguments, except the event name
+                return method.apply(this, [element, percentage]);
+            } else {
+                console.log('no method available');
+            }
+
+        }
     },
 
     /**
@@ -274,9 +292,9 @@ Relativity.prototype = {
     *   @method triggerParallaxOffScreen
     *   @return {undefined}
     */
-    triggerParallaxOffScreen: function(container, direction) {
-        container.$element.removeClass('parallax-onscreen');
-        container.$element.trigger('parallax:offscreen', direction);
+    triggerContainerOffScreen: function(container, direction) {
+        container.$element.removeClass('relativity-onscreen');
+        container.$element.trigger('relativity:offscreen', direction);
     },
 
     /**
@@ -315,7 +333,7 @@ Relativity.prototype = {
     */
     initEvents: function() {
         // Initialize your module specific events here.
-        $(document).on('parallax:update', $.proxy(this.onUpdateParallax, this));
+        $(document).on('relativity:update', $.proxy(this.onUpdateParallax, this));
 
         if((this.isIE8 && this.options.ie8Support) || (this.isIE9 && this.options.ie9Support)) {
             // IE8 and 9 don't play nice with scrolling events - it's super jerky - so we will use
@@ -375,13 +393,146 @@ Relativity.prototype = {
     },
 
     /**
+    *   Method for handling moving objects left
+    *
+    *   @method onMovementLeft
+    *   @return {undefined}
+    */
+    onMovementLeft: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newLeft = data.originalLeft - delta; 
+        
+        if(this.positionProperty === 'position') {
+            this.setLeft($elem, newLeft);    
+        } else {
+            this.setTransform($elem, newLeft, data.originalLeft, 0, 0);
+        }
+        
+    },
+
+    /**
+    *   Method for handling moving objects right
+    *
+    *   @method onMovementRight
+    *   @return {undefined}
+    */
+    onMovementRight: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newLeft = data.originalLeft + delta; 
+        
+        if(this.positionProperty == 'position') {
+            this.setLeft($elem, newLeft);    
+        } else {
+            this.setTransform($elem, newLeft, data.originalLeft, 0, 0);
+        }
+    },
+
+    /**
+    *   Method for handling moving objects up
+    *
+    *   @method onMovementUp
+    *   @return {undefined}
+    */
+    onMovementUp: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newTop = data.originalTop - delta; 
+        
+        if(this.positionProperty == 'position') {
+            this.setTop($elem, newTop);    
+        } else {
+            this.setTransform($elem, 0, 0, newTop, data.originalTop);
+        }
+    },
+
+    /**
+    *   Method for handling moving objects down
+    *
+    *   @method onMovementDown
+    *   @return {undefined}
+    */
+    onMovementDown: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newTop = data.originalTop + delta; 
+        
+        if(this.positionProperty == 'position') {
+            this.setTop($elem, newTop);    
+        } else {
+            this.setTransform($elem, 0, 0, newTop, data.originalTop);
+        }
+    },
+
+    /**
+    *   Method for handling scaling objects
+    *
+    *   @method onMovementScale
+    *   @return {undefined}
+    */
+    onMovementScale: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newWidth = data.originalWidth + delta,
+            newHeight = data.originalHeight * (newWidth / data.originalWidth); 
+        
+        $elem.css('width', newWidth + 'px');
+        $elem.css('height', newHeight + 'px');
+    },
+
+    /**
+    *   Method for handling revealing objects
+    *
+    *   @method onMovementReveal
+    *   @return {undefined}
+    */
+    onMovementReveal: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem); 
+
+        if(percentage >= data.triggerPoint) {
+            $elem.css('opacity', '1');    
+        } else {
+            $elem.css('opacity', '0');
+        }
+    },
+
+    /**
+    *   Method for handling revealing objects
+    *
+    *   @method onMovementReveal
+    *   @return {undefined}
+    */
+    onMovementWiden: function(element, percentage) {
+
+        var $elem = element.$element,
+            data = this.getDataAttributes($elem),
+            delta = this.calculateDelta(_.assign(data, element.options), percentage),
+            newWidth = data.originalWidth + delta; 
+
+        $elem.css('width', newWidth);    
+    },
+
+    /**
     *   Remove event listeners
     *
     *   @method uninitialize
     *   @return {undefined}
     */
     removeEvents: function() {
-        $(document).off('parallax:update', $.proxy(this.onUpdateParallax, this));
+        $(document).off('relativity:update', $.proxy(this.onUpdateParallax, this));
         $(window).off('scroll', $.proxy(this.onWindowScroll, this));
         $(window).off('resize', $.proxy(this.onWindowResize, this));
     },
@@ -435,7 +586,97 @@ Relativity.prototype = {
           top:  window.pageYOffset || document.documentElement.scrollTop   || document.body.scrollTop,
           left: window.pageXOffset || document.documentElement.scrollLeft  || document.body.scrollLeft
         };
-    }
+    },
+
+    /**
+    *   Gets information from the data attributes on the elem that we
+    *   need to calculate changes in position.  Also caches original position
+    *   if it hasn't already been cached.
+    *
+    *   @method getDataAttributes
+    *   @return {undefined}
+    */
+    getDataAttributes: function($elem) {
+        var originalLeft = $elem.attr('data-relativity-original-left'),
+            originalTop = $elem.attr('data-relativity-original-top'),
+            originalWidth = $elem.attr('data-relativity-original-width'),
+            originalHeight = $elem.attr('data-relativity-original-height');
+
+        // cache original position if not set
+        if(typeof originalLeft == 'undefined') {
+            originalLeft = $elem.position().left;
+            originalTop = $elem.position().top;
+            originalWidth = $elem.width();
+            originalHeight = $elem.height();
+            $elem.attr('data-relativity-original-left', originalLeft);
+            $elem.attr('data-relativity-original-top', originalTop);
+            $elem.attr('data-relativity-original-width', originalWidth);
+            $elem.attr('data-relativity-original-height', originalHeight);
+        }
+
+        return {
+            originalLeft: window.parseFloat(originalLeft),
+            originalTop: window.parseFloat(originalTop),
+            originalWidth: window.parseFloat(originalWidth),
+            originalHeight: window.parseFloat(originalHeight)
+        };
+    },
+
+    setLeft: function($elem, left) { 
+        $elem.css('left', left); 
+    },
+    
+    setTop: function($elem, top) { 
+        $elem.css('top', top); 
+    },
+    
+    setTransform: function($elem, left, startingLeft, top, startingTop) {
+        if(this.options.supports3D) {
+            // 3d transformations - Much faster
+            $elem.css(this.prefixedTransform, 'translate3d(' + (left - startingLeft) + 'px, ' + (top - startingTop) + 'px, 0)');
+        } else {
+            // 2d transformations only - IE9
+            $elem.css(this.prefixedTransform, 'translate(' + (left - startingLeft) + 'px, ' + (top - startingTop) + 'px)');
+        }
+    },
+
+    /**
+    *   Calculates how far an object should be moved based on it's data attributes.
+    *
+    *   @method calculateDelta
+    *   @return {undefined}
+    */
+    calculateDelta: function(data, percentage) {
+        // if there is no range defined in the data object then
+        // use the screen size as a range
+        var range = data.range || this.viewPortSize.height,
+            speed = data.speed,
+            delta = window.parseInt(speed * range * (percentage - 0.5));
+
+        return delta;
+    },
+
+    // Returns a function which adds a vendor prefix to any CSS property name
+    vendorPrefix: (function() {
+        var prefixes = /^(Moz|Webkit|Khtml|O|ms|Icab)(?=[A-Z])/,
+            style = $('script')[0].style,
+            prefix = '',
+            prop;
+
+        for (prop in style) {
+            if (prefixes.test(prop)) {
+                prefix = prop.match(prefixes)[0];
+                break;
+            }
+        }
+
+        if ('WebkitOpacity' in style) { prefix = 'Webkit'; }
+        if ('KhtmlOpacity' in style) { prefix = 'Khtml'; }
+
+        return function(property) {
+            return prefix + (prefix.length > 0 ? property.charAt(0).toUpperCase() + property.slice(1) : property);
+        };
+    })()
 };
 
 module.exports = Relativity;

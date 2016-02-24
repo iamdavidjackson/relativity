@@ -1,5 +1,6 @@
 var $ = require("jquery");
 var _ = require("lodash");
+var movements = require("./movements");
 
 /**
 *   ParallaxMovement is a module.
@@ -28,7 +29,9 @@ var ParallaxMovement = function(options) {
 
         supports3D: true,
 
-        backgroundPositionSupport: true
+        backgroundPositionSupport: true,
+
+        movements: movements
     };
 
     this.initVariables(options);
