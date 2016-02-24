@@ -1,0 +1,29 @@
+{
+  "name": "relativity",
+  "version": "1.0.0",
+  "description": "Super smooth animations on scroll.",
+  "main": "index.js",
+  "scripts": {
+    "bundle": "webpack -p",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamdavidjackson/relativity.git"
+  },
+  "keywords": [
+    "parallax",
+    "scroll",
+    "animation"
+  ],
+  "author": "David Jackson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/iamdavidjackson/relativity/issues"
+  },
+  "homepage": "https://github.com/iamdavidjackson/relativity#readme",
+  "devDependencies": {
+    "lodash": "^4.5.1",
+    "webpack": "^1.12.14"
+  }
+}
