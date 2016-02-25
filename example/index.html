@@ -1,71 +1,50 @@
 <html>
 	<head>
 		<title>Relativity Example</title>
+		<link rel="stylesheet" href="css/main.css">
 		<style>
 			.row p { position: relative; }
+			.reveal { 
+				opacity: 0; 
+				-webkit-transition: opacity 1s; /* Safari */
+    			transition: opacity 1s;
+    		}
 		</style>
 	</head>
 	<body>
-		<div class="row1">
+		<div class="jumbotron">
 			<h1>Relativity</h1>
+			<p>The name “theory of relativity” is connected with the fact that motion from the point of view of possible experience always appears as the relative motion of one object with respect to another ... Motion is never observable as “motion with respect to space” or, as it has been expressed, “absolute motion” <span>Albert Einstein - "The Theory of Relativity", 1949</span></p>
+		</div>
+		<div class="row example-row-1">
+			<h1>Move something to the left</h1>
 			<p>This is an example of how relativity works.</p>
 		</div>
-		<div class="row2">
-			<h1>Relativity</h1>
+		<div class="row example-row-2">
+			<h1>Move something to the right</h1>
 			<p>This is an example of how relativity works.</p>
 		</div>
-		<div class="row3">
-			<h1>Relativity</h1>
+		<div class="row example-row-3">
+			<h1>Move something up</h1>
 			<p>This is an example of how relativity works.</p>
 		</div>
-		<div class="row4">
-			<h1>Relativity</h1>
+		<div class="row example-row-4">
+			<h1>Move something down</h1>
 			<p>This is an example of how relativity works.</p>
 		</div>
-		<div class="row5">
-			<h1>Relativity</h1>
+		<div class="row example-row-5">
+			<h1>Scale something</h1>
 			<p>This is an example of how relativity works.</p>
 		</div>
-		<div class="row6">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
+		<div class="row example-row-6">
+			<h1>Reveal something</h1>
+			<p class="reveal">This is an example of how relativity works.</p>
 		</div>
-		<div class="row7">
+		<div class="jumbotron">
 			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
+			<p>The name “theory of relativity” is connected with the fact that motion from the point of view of possible experience always appears as the relative motion of one object with respect to another ... Motion is never observable as “motion with respect to space” or, as it has been expressed, “absolute motion” <span>Albert Einstein - "The Theory of Relativity", 1949</span></p>
 		</div>
-		<div class="row8">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row9">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row10">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row11">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row12">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row13">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row14">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
-		<div class="row15">
-			<h1>Relativity</h1>
-			<p>This is an example of how relativity works.</p>
-		</div>
+
 
 		<script src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
 		<script src="js/relativity.js"></script>
@@ -75,7 +54,7 @@
 				supports3D: true,
 				containers: [
 					{
-						selector: ".row1",
+						selector: ".example-row-1",
 						elements: [
 							{
 								selector: "p",
@@ -87,11 +66,11 @@
 						]
 					},
 					{
-						selector: ".row2",
+						selector: ".example-row-2",
 						elements: [
 							{
 								selector: "p",
-								movement: "left",
+								movement: "right",
 								options: {
 									speed: "0.5"
 								}
@@ -99,11 +78,11 @@
 						]
 					},
 					{
-						selector: ".row3",
+						selector: ".example-row-3",
 						elements: [
 							{
 								selector: "p",
-								movement: "left",
+								movement: "up",
 								options: {
 									speed: "0.5"
 								}
@@ -111,11 +90,11 @@
 						]
 					},
 					{
-						selector: ".row4",
+						selector: ".example-row-4",
 						elements: [
 							{
 								selector: "p",
-								movement: "left",
+								movement: "down",
 								options: {
 									speed: "0.5"
 								}
@@ -123,11 +102,11 @@
 						]
 					},
 					{
-						selector: ".row5",
+						selector: ".example-row-5",
 						elements: [
 							{
 								selector: "p",
-								movement: "left",
+								movement: "scale",
 								options: {
 									speed: "0.5"
 								}
@@ -135,65 +114,18 @@
 						]
 					},
 					{
-						selector: ".row6",
+						selector: ".example-row-6",
 						elements: [
 							{
 								selector: "p",
-								movement: "left",
+								movement: "reveal",
 								options: {
-									speed: "0.5"
-								}
-							}
-						]
-					},
-					{
-						selector: ".row7",
-						elements: [
-							{
-								selector: "p",
-								movement: "left",
-								options: {
-									speed: "0.5"
-								}
-							}
-						]
-					},
-					{
-						selector: ".row8",
-						elements: [
-							{
-								selector: "p",
-								movement: "left",
-								options: {
-									speed: "0.5"
-								}
-							}
-						]
-					},
-					{
-						selector: ".row9",
-						elements: [
-							{
-								selector: "p",
-								movement: "left",
-								options: {
-									speed: "0.5"
-								}
-							}
-						]
-					},
-					{
-						selector: ".row10",
-						elements: [
-							{
-								selector: "p",
-								movement: "left",
-								options: {
-									speed: "0.5"
+									triggerPoint: "0.3"
 								}
 							}
 						]
 					}
+					
 				]
 			});
 		</script>

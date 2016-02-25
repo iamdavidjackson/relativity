@@ -12,7 +12,7 @@ function Relativity (options) {
         autoInit: true,
 
         // selector for the top level container that the module will act on
-        $container: 'body',
+        topLevelContainerSelector: 'body',
 
         // selector used to find all the relativity container in the $container
         containerSelector: '.relativity-container',
@@ -59,12 +59,14 @@ Relativity.prototype = {
         this.options = this.extend(this._defaultOptions, options);
         this.containers = this.options.containers;
 
-        // Check for IE version using the selector defined in the options object
-        this.isIE8 = $(this.options.ieBrowserVersionSelector).hasClass('lt-ie9');
-        this.isIE9 = !this.isIE8 && $(this.options.ieBrowserVersionSelector).hasClass('lt-ie10');
-
         // Dom Elements
-        this.$container = $(this.options.$container);
+        this.$topLevelContainer = $(this.options.topLevelContainerSelector);
+        this.$onOffElement = $(this.options.onOffSelector);
+        this.$ieBrowserVersionElement = $(this.options.ieBrowserVersionSelector);
+
+        // Check for IE version using the selector defined in the options object
+        this.isIE8 = this.$ieBrowserVersionElement.hasClass('lt-ie9');
+        this.isIE9 = !this.isIE8 && this.$ieBrowserVersionElement.hasClass('lt-ie10');
     },
 
     /**
@@ -90,13 +92,13 @@ Relativity.prototype = {
     */
     enable: function() {
         if(this.isSupported()) {
-            $(this.options.onOffSelector).addClass('relativity-on');
+            this.$onOffElement.removeClass('relativity-off').addClass('relativity-on');
 
             this.initEvents();
             this.updateVariables();
             this.updateElements(true);// passing in true will force the recalculation of all elements positions
         } else {
-            $(this.options.onOffSelector).addClass('relativity-off');
+            this.disable();
         }
     },
 
@@ -109,7 +111,7 @@ Relativity.prototype = {
     */
     disable: function() {
         this.removeEvents();
-        $(this.options.onOffSelector).addClass('relativity-off');
+        this.$onOffElement.removeClass('relativity-on').addClass('relativity-off');
     },
 
     /**
@@ -181,43 +183,54 @@ Relativity.prototype = {
         if(containerLength > 0) {
         	for (var i = 0; i < containerLength; i++) {
         		var container = this.options.containers[i],
-        			$elem = $(container.selector),
-        			top = $elem.offset().top,
-	                height = $elem.height(),
-	                bottom = top + height,
-	                elementsLength = container.elements.length,
-	            	elements = [];
+        			$containers = this.$topLevelContainer.find(container.selector);
 
-	            for (var j = 0; j < elementsLength; j++) {
-	            	var element = container.elements[j],
-                        $element = $elem.find(element.selector);
+                // check to make sure that the DOM element exists, it's also possible that there will be multiple elements
+                // found so lets loop through them and cache them all.
+                $containers.each(function(index, elem) {
+                    var $container = $(elem),
+                        top = $container.offset().top,
+    	                height = $container.height(),
+    	                bottom = top + height,
+    	                elementsLength = container.elements.length,
+    	            	elements = [];
 
-	            	elements.push({
-	            		$element: $element,
-	            		movement: element.movement,
-	            		options: element.options,
-                        originalLeft: $element.position().left,
-                        originalTop: $element.position().top,
-                        originalWidth: $element.width(),
-                        originalHeight: $element.height()
-	            	});
-	            }
+    	            for (var j = 0; j < elementsLength; j++) {
+    	            	var element = container.elements[j],
+                            $elements = $container.find(element.selector);
 
-        		containers.push({
-	                top: top,
-	                bottom: bottom,
-	                height: height,
-	                $element: $elem,
-	                elements: elements,
-	                elementsCount: elements.length
-	            });
+                        // check to make sure that the DOM element exists
+                        $elements.each(function(index, elem) {
+        	            	var $element = $(elem);
+
+                            elements.push({
+        	            		$element: $element,
+        	            		movement: element.movement,
+        	            		options: element.options,
+                                originalLeft: $element.position().left,
+                                originalTop: $element.position().top,
+                                originalWidth: $element.width(),
+                                originalHeight: $element.height()
+        	            	});
+                        });
+    	            }
+
+            		containers.push({
+    	                top: top,
+    	                bottom: bottom,
+    	                height: height,
+    	                $element: $container,
+    	                elements: elements,
+    	                elementsCount: elements.length
+    	            });
+                });
         	}
         } else {
             // First we'll find the top level container using the selector defined in the options object
-        	this.$container = $(this.options.$container);
+        	this.$topLevelContainer = $(this.options.$topLevelContainerSelector);
 
             // then we'll search in that for all the containers using the selector defined in the options object as well
-        	this.$containers = this.$container.find(this.options.containerSelector);
+        	this.$containers = this.$topLevelContainer.find(this.options.containerSelector);
 
         	// loop through all the relativity containers and cache their top and bottom positions
 	        this.$containers.each(function(index, containerElem) {
@@ -505,10 +518,9 @@ Relativity.prototype = {
     */
     onMovementReveal: function(element, percentage) {
 
-        var $elem = element.$element,
-            data = this.getDataAttributes($elem); 
+        var $elem = element.$element; 
 
-        if(percentage >= data.triggerPoint) {
+        if(percentage >= element.options.triggerPoint) {
             $elem.css('opacity', '1');    
         } else {
             $elem.css('opacity', '0');
