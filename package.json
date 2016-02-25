@@ -1,6 +1,6 @@
 {
   "name": "relativity",
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "description": "Super smooth animations on scroll.",
   "main": "index.js",
   "scripts": {

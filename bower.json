@@ -1,0 +1,28 @@
+{
+  "name": "relativity",
+  "description": "Super smooth animations on scroll.",
+  "main": "./src/relativity.js",
+  "authors": [
+    "David Jackson"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "parallax",
+    "scroll",
+    "animation"
+  ],
+  "homepage": "https://github.com/iamdavidjackson/relativity",
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "public/bower_components",
+    "test",
+    "tests"
+  ]
+}
