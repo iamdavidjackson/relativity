@@ -1,22 +1,21 @@
 var $ = require("jquery");
-var _ = require("lodash");
 
 function Relativity (options) {
 
 	this.prefixedTransform = this.vendorPrefix('transform');
 	
-	// Define default parallax options here - These can be over-ridden by the options variable
+	// Define default relativity options here - These can be over-ridden by the options variable
     // passed in.
     this._defaultOptions = {
 
         // initialize functionality immediately or wait to initialize later
         autoInit: true,
 
-        // top level container that the module will act on
+        // selector for the top level container that the module will act on
         $container: 'body',
 
-        // selector used to find all the parallax container in the $container
-        parallaxContainerSelector: '.parallax-container',
+        // selector used to find all the relativity container in the $container
+        containerSelector: '.relativity-container',
 
         // whether we should be supporting mobile 
         mobileSupport: true,
@@ -30,8 +29,6 @@ function Relativity (options) {
         positionProperty: 'position',
 
         supports3D: true,
-
-        backgroundPositionSupport: true,
 
         containers: []
     }
@@ -55,7 +52,7 @@ Relativity.prototype = {
     */
     initVariables: function(options) {
         // Override default options with those passed in
-        this.options = _.assign(this._defaultOptions, options);
+        this.options = this.extend(this._defaultOptions, options);
         this.containers = this.options.containers;
 
         // Dom Elements
@@ -76,13 +73,13 @@ Relativity.prototype = {
             $('html').addClass('relativity');
 
             this.initEvents();
-            this.onUpdateParallax();
+            this.onUpdateRelativity();
             this.isInit = true; 
         }
     },
 
     /**
-    *   Checks to see whether parallax is supported or not
+    *   Checks to see whether relativity is supported or not
     *
     *   @method isSupported
     *   @return {undefined}
@@ -144,7 +141,7 @@ Relativity.prototype = {
 
         this.viewPortSize = this.getViewportSize();
         this.viewPortOffset = this.getViewportOffset();
-        this.parallaxContainers = [];
+        this.containers = [];
 
         // If some containers have been defined then use those otherwise search the DOM structure for them
         var containerLength = this.options.containers.length;
@@ -159,16 +156,21 @@ Relativity.prototype = {
 	            	elements = [];
 
 	            for (var j = 0; j < elementsLength; j++) {
-	            	var element = container.elements[j];
+	            	var element = container.elements[j],
+                        $element = $elem.find(element.selector);
 
 	            	elements.push({
-	            		$element: $elem.find(element.selector),
+	            		$element: $element,
 	            		movement: element.movement,
-	            		options: element.options
+	            		options: element.options,
+                        originalLeft: $element.position().left,
+                        originalTop: $element.position().top,
+                        originalWidth: $element.width(),
+                        originalHeight: $element.height()
 	            	});
 	            }
 
-        		this.parallaxContainers.push({
+        		this.containers.push({
 	                top: top,
 	                bottom: bottom,
 	                height: height,
@@ -179,27 +181,31 @@ Relativity.prototype = {
         	}
         } else {
         	this.$container = $(this.options.$container);
-        	this.$parallaxContainers = this.$container.find(this.options.parallaxContainerSelector);
-        	// loop through all the parallax containers and cache their top and bottom positions
-	        this.$parallaxContainers.each(function(index, elem) {
+        	this.$containers = this.$container.find(this.options.containerSelector);
+        	// loop through all the relativity containers and cache their top and bottom positions
+	        this.$containers.each(function(index, elem) {
 	            var $elem = $(elem),
 	                top = $elem.offset().top,
 	                height = $elem.height(),
 	                bottom = top + height;
 
-	            var $elements = $elem.find('[data-parallax-movement]'),
+	            var $elements = $elem.find('[data-relativity-movement]'),
 	            	elements = [];
 
 	            $elements.each(function(index, elem) {
 	            	var $elem = $(elem);
 	            	elements.push({
 	            		$element: $elem,
-	            		movement: $elem.attr('data-parallax-movement'),
-	            		options: $elem.data()
+	            		movement: $elem.attr('data-relativity-movement'),
+	            		options: $elem.data(),
+                        originalLeft: $element.position().left,
+                        originalTop: $element.position().top,
+                        originalWidth: $element.width(),
+                        originalHeight: $element.height()
 	            	});
 	            });
 
-	            self.parallaxContainers.push({
+	            self.containers.push({
 	                top: top,
 	                bottom: bottom,
 	                height: height,
@@ -211,7 +217,7 @@ Relativity.prototype = {
         }
 
         // Cache the length of the array
-        this.parallaxContainersLength = this.parallaxContainers.length;
+        this.containersLength = this.containers.length;
         
     },
 
@@ -230,15 +236,16 @@ Relativity.prototype = {
             scrollDirection = 'down';
 
         // check to see if the screen has moved at all since the last frame
-        if(this.viewPortOffset.top !== viewPortOffset.top) {
+        if(this.viewPortOffset.top !== viewPortOffset.top || !this.isInit) {
             // we assumed the user is scrolling down but lets verify and set it to down if we were wrong
             if(this.viewPortOffset.top > viewPortOffset.top) {
                 scrollDirection = 'up';
             }
             this.viewPortOffset = viewPortOffset;
+
             // Find all elements with top or bottom values between topOffset and bottomOffset
-            for (var i = 0; i < this.parallaxContainersLength; i++) {
-            	var container = this.parallaxContainers[i];
+            for (var i = 0; i < this.containersLength; i++) {
+            	var container = this.containers[i];
                 if((container.top > topOffset && container.top < bottomOffset) || (container.bottom > topOffset && container.bottom < bottomOffset) || container.top < topOffset && container.bottom > bottomOffset) {
                     
                     var maxTopOffset = topOffset - container.height, // if the bottom of the container was at the top of the screen
@@ -260,14 +267,14 @@ Relativity.prototype = {
     *   This function triggers an event on this object that can be listened to.  It sends along an object
     *   with some useful information.
     *
-    *   @method triggerParallaxOnScreen
+    *   @method triggerContainerOnScreen
     *   @return {undefined}
     */
     triggerContainerOnScreen: function(container, percentage) {
     	container.$element.addClass('relativity-onscreen');
         container.$element.trigger('relativity:onscreen', percentage);
         
-        // move the elements we defined as having a parallax movement
+        // move the elements we defined as having a relativity movement
         for (var i = 0; i < container.elementsCount; i++) {
 
             var element = container.elements[i],
@@ -276,7 +283,7 @@ Relativity.prototype = {
                 method = this[methodName];
 
             // call the onMethodName if it exists
-            if (_.isFunction(method)) {
+            if (typeof method == 'function') {
                 // pass all arguments, except the event name
                 return method.apply(this, [element, percentage]);
             } else {
@@ -289,7 +296,7 @@ Relativity.prototype = {
     /**
     *   This function triggers an event on this object when an object has moved off screen.
     *
-    *   @method triggerParallaxOffScreen
+    *   @method triggerConatinerOffScreen
     *   @return {undefined}
     */
     triggerContainerOffScreen: function(container, direction) {
@@ -298,10 +305,10 @@ Relativity.prototype = {
     },
 
     /**
-    *   Enables Parallax!  If Parallax hasn't been initialized it takes care of that
+    *   Enables Relativity!  If Relativity hasn't been initialized it takes care of that
     *   or if it has been then it enables all the waypoints.
     *
-    *   @method initParallax
+    *   @method initRelativity
     *   @return {undefined}
     */
     enable: function() {
@@ -315,7 +322,7 @@ Relativity.prototype = {
     },
 
     /**
-    *   Disables Parallax... Just turns off the events for now.  If you really want to kill parallax
+    *   Disables Relativity... Just turns off the events for now.  If you really want to kill Relativity
     *   then run uninitialize.
     *
     *   @method disable
@@ -333,11 +340,11 @@ Relativity.prototype = {
     */
     initEvents: function() {
         // Initialize your module specific events here.
-        $(document).on('relativity:update', $.proxy(this.onUpdateParallax, this));
+        $(document).on('relativity:update', $.proxy(this.onUpdateRelativity, this));
 
         if((this.isIE8 && this.options.ie8Support) || (this.isIE9 && this.options.ie9Support)) {
             // IE8 and 9 don't play nice with scrolling events - it's super jerky - so we will use
-            // requestAnimFrame calls instead to animate the parallax thereby cutting jerky scroll
+            // requestAnimFrame calls instead to animate the elements thereby cutting jerky scroll
             // right out of the picture.
 
             this.requestAnimFrameLoop();
@@ -381,13 +388,12 @@ Relativity.prototype = {
     },
 
     /**
-    *   This is the event handler for the 'parallax:update' event.  It calls the waypoints
-    *   plugin to refresh.
+    *   This is the event handler for the 'relativity:update' event.
     *
-    *   @method onUpdateParallax
+    *   @method onUpdateRelativity
     *   @return {undefined}
     */
-    onUpdateParallax: function(event) {
+    onUpdateRelativity: function(event) {
         this.updateVariables();
         this.updateElements();
     },
@@ -401,14 +407,13 @@ Relativity.prototype = {
     onMovementLeft: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newLeft = data.originalLeft - delta; 
+            delta = this.calculateDelta(element, percentage),
+            newLeft = element.originalLeft - delta; 
         
         if(this.positionProperty === 'position') {
             this.setLeft($elem, newLeft);    
         } else {
-            this.setTransform($elem, newLeft, data.originalLeft, 0, 0);
+            this.setTransform($elem, newLeft, element.originalLeft, 0, 0);
         }
         
     },
@@ -422,14 +427,13 @@ Relativity.prototype = {
     onMovementRight: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newLeft = data.originalLeft + delta; 
+            delta = this.calculateDelta(element, percentage),
+            newLeft = element.originalLeft + delta; 
         
         if(this.positionProperty == 'position') {
             this.setLeft($elem, newLeft);    
         } else {
-            this.setTransform($elem, newLeft, data.originalLeft, 0, 0);
+            this.setTransform($elem, newLeft, element.originalLeft, 0, 0);
         }
     },
 
@@ -442,14 +446,13 @@ Relativity.prototype = {
     onMovementUp: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newTop = data.originalTop - delta; 
+            delta = this.calculateDelta(element, percentage),
+            newTop = element.originalTop - delta; 
         
         if(this.positionProperty == 'position') {
             this.setTop($elem, newTop);    
         } else {
-            this.setTransform($elem, 0, 0, newTop, data.originalTop);
+            this.setTransform($elem, 0, 0, newTop, element.originalTop);
         }
     },
 
@@ -462,14 +465,13 @@ Relativity.prototype = {
     onMovementDown: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newTop = data.originalTop + delta; 
+            delta = this.calculateDelta(element, percentage),
+            newTop = element.originalTop + delta; 
         
         if(this.positionProperty == 'position') {
             this.setTop($elem, newTop);    
         } else {
-            this.setTransform($elem, 0, 0, newTop, data.originalTop);
+            this.setTransform($elem, 0, 0, newTop, element.originalTop);
         }
     },
 
@@ -482,10 +484,9 @@ Relativity.prototype = {
     onMovementScale: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newWidth = data.originalWidth + delta,
-            newHeight = data.originalHeight * (newWidth / data.originalWidth); 
+            delta = this.calculateDelta(element, percentage),
+            newWidth = element.originalWidth + delta,
+            newHeight = element.originalHeight * (newWidth / element.originalWidth); 
         
         $elem.css('width', newWidth + 'px');
         $elem.css('height', newHeight + 'px');
@@ -518,9 +519,8 @@ Relativity.prototype = {
     onMovementWiden: function(element, percentage) {
 
         var $elem = element.$element,
-            data = this.getDataAttributes($elem),
-            delta = this.calculateDelta(_.assign(data, element.options), percentage),
-            newWidth = data.originalWidth + delta; 
+            delta = this.calculateDelta(element, percentage),
+            newWidth = element.originalWidth + delta; 
 
         $elem.css('width', newWidth);    
     },
@@ -532,7 +532,7 @@ Relativity.prototype = {
     *   @return {undefined}
     */
     removeEvents: function() {
-        $(document).off('relativity:update', $.proxy(this.onUpdateParallax, this));
+        $(document).off('relativity:update', $.proxy(this.onUpdateRelativity, this));
         $(window).off('scroll', $.proxy(this.onWindowScroll, this));
         $(window).off('resize', $.proxy(this.onWindowResize, this));
     },
@@ -588,40 +588,6 @@ Relativity.prototype = {
         };
     },
 
-    /**
-    *   Gets information from the data attributes on the elem that we
-    *   need to calculate changes in position.  Also caches original position
-    *   if it hasn't already been cached.
-    *
-    *   @method getDataAttributes
-    *   @return {undefined}
-    */
-    getDataAttributes: function($elem) {
-        var originalLeft = $elem.attr('data-relativity-original-left'),
-            originalTop = $elem.attr('data-relativity-original-top'),
-            originalWidth = $elem.attr('data-relativity-original-width'),
-            originalHeight = $elem.attr('data-relativity-original-height');
-
-        // cache original position if not set
-        if(typeof originalLeft == 'undefined') {
-            originalLeft = $elem.position().left;
-            originalTop = $elem.position().top;
-            originalWidth = $elem.width();
-            originalHeight = $elem.height();
-            $elem.attr('data-relativity-original-left', originalLeft);
-            $elem.attr('data-relativity-original-top', originalTop);
-            $elem.attr('data-relativity-original-width', originalWidth);
-            $elem.attr('data-relativity-original-height', originalHeight);
-        }
-
-        return {
-            originalLeft: window.parseFloat(originalLeft),
-            originalTop: window.parseFloat(originalTop),
-            originalWidth: window.parseFloat(originalWidth),
-            originalHeight: window.parseFloat(originalHeight)
-        };
-    },
-
     setLeft: function($elem, left) { 
         $elem.css('left', left); 
     },
@@ -646,14 +612,21 @@ Relativity.prototype = {
     *   @method calculateDelta
     *   @return {undefined}
     */
-    calculateDelta: function(data, percentage) {
+    calculateDelta: function(element, percentage) {
         // if there is no range defined in the data object then
         // use the screen size as a range
-        var range = data.range || this.viewPortSize.height,
-            speed = data.speed,
+        var range = element.options.range || this.viewPortSize.height,
+            speed = element.options.speed,
             delta = window.parseInt(speed * range * (percentage - 0.5));
 
         return delta;
+    },
+
+    extend: function (obj, src) {
+        for (var key in src) {
+            if (src.hasOwnProperty(key)) obj[key] = src[key];
+        }
+        return obj;
     },
 
     // Returns a function which adds a vendor prefix to any CSS property name

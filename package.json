@@ -23,7 +23,6 @@
   },
   "homepage": "https://github.com/iamdavidjackson/relativity#readme",
   "devDependencies": {
-    "lodash": "^4.5.1",
     "webpack": "^1.12.14"
   }
 }
