@@ -17,6 +17,12 @@ function Relativity (options) {
         // selector used to find all the relativity container in the $container
         containerSelector: '.relativity-container',
 
+        // selector used to find the IE version number.  This usually uses conditional HTML on either the <html> or <body> tags.
+        ieBrowserVersionSelector: 'body',
+
+        // selector used to add 'relativity-on' or 'relativity-off' to easily know whether relativity is running or not
+        onOffSelector: 'html',
+
         // whether we should be supporting mobile 
         mobileSupport: true,
 
@@ -26,20 +32,18 @@ function Relativity (options) {
         // whether we should be supporting IE9
         ie9Support: true,
 
-        positionProperty: 'position',
+        // define which type of animation type to use.  'position' will use left and top CSS properties and 'transform' will use the transform CSS3 property
+        positionProperty: 'transform',
 
+        // in the case of a transfrom positionProperty, this setting will allow you to force transform3d to utilize the GPU for smoother motion
         supports3D: true,
 
+        // a JSON array of DOM selectors and movement types to use instead of searching them out
         containers: []
     }
 
-	// Initialize all the variables
-    this.initVariables(options);
-
-    // If autoInit is set to true we should go ahead and start the engines.
-    if(this.options.autoInit) {
-        this.init();
-    }
+	// Initialize
+    this.init(options);
 }
 
 Relativity.prototype = {
@@ -55,9 +59,12 @@ Relativity.prototype = {
         this.options = this.extend(this._defaultOptions, options);
         this.containers = this.options.containers;
 
+        // Check for IE version using the selector defined in the options object
+        this.isIE8 = $(this.options.ieBrowserVersionSelector).hasClass('lt-ie9');
+        this.isIE9 = !this.isIE8 && $(this.options.ieBrowserVersionSelector).hasClass('lt-ie10');
+
         // Dom Elements
         this.$container = $(this.options.$container);
-        this.updateVariables();
     },
 
     /**
@@ -66,20 +73,47 @@ Relativity.prototype = {
     *   @method init
     *   @return {undefined}
     */
-    init: function () {
-        // mobile browsers require some special scrolling magic.  Instead of writing this
-        // I'm just going to piggy back on some already super code...  We'll just use Skrollr.
-        if(this.isSupported()) {
-            $('html').addClass('relativity');
-
-            this.initEvents();
-            this.onUpdateRelativity();
-            this.isInit = true; 
+    init: function (options) {
+        this.initVariables(options);
+        // If autoInit is set to true we should go ahead and start the engines.
+        if(this.options.autoInit) {
+            this.enable();
         }
     },
 
     /**
-    *   Checks to see whether relativity is supported or not
+    *   Enables Relativity!  If Relativity hasn't been initialized it takes care of that
+    *   or if it has been then it enables all the waypoints.
+    *
+    *   @method initRelativity
+    *   @return {undefined}
+    */
+    enable: function() {
+        if(this.isSupported()) {
+            $(this.options.onOffSelector).addClass('relativity-on');
+
+            this.initEvents();
+            this.updateVariables();
+            this.updateElements(true);// passing in true will force the recalculation of all elements positions
+        } else {
+            $(this.options.onOffSelector).addClass('relativity-off');
+        }
+    },
+
+    /**
+    *   Disables Relativity... Just turns off the events for now.  If you really want to kill Relativity
+    *   then run uninitialize.
+    *
+    *   @method disable
+    *   @return {undefined}
+    */
+    disable: function() {
+        this.removeEvents();
+        $(this.options.onOffSelector).addClass('relativity-off');
+    },
+
+    /**
+    *   Checks to see whether relativity is supported or not.  We are most concerned with mobile browsers that don't fire off screen scroll events.
     *
     *   @method isSupported
     *   @return {undefined}
@@ -88,7 +122,6 @@ Relativity.prototype = {
         var isSupported = true;
 
         // Check for mobile.  We'll only support Apple products with IOS versions of 8 and above
-        
         var isMobile = {
             Android: function() {
                 return navigator.userAgent.match(/Android/i);
@@ -131,17 +164,17 @@ Relativity.prototype = {
     },
 
     /**
-    *   Set variable values that need to be updated during runtime.
+    *   Set variable values that need to be referenced during runtime.  This will cache all the DOM elements and 
+    *   any values we'll need.
     *
     *   @method updateVariables
     *   @return {undefined}
     */
     updateVariables: function() {
-        var self = this;
+        var containers = [];
 
         this.viewPortSize = this.getViewportSize();
         this.viewPortOffset = this.getViewportOffset();
-        this.containers = [];
 
         // If some containers have been defined then use those otherwise search the DOM structure for them
         var containerLength = this.options.containers.length;
@@ -170,7 +203,7 @@ Relativity.prototype = {
 	            	});
 	            }
 
-        		this.containers.push({
+        		containers.push({
 	                top: top,
 	                bottom: bottom,
 	                height: height,
@@ -180,16 +213,20 @@ Relativity.prototype = {
 	            });
         	}
         } else {
+            // First we'll find the top level container using the selector defined in the options object
         	this.$container = $(this.options.$container);
-        	this.$containers = this.$container.find(this.options.containerSelector);
-        	// loop through all the relativity containers and cache their top and bottom positions
-	        this.$containers.each(function(index, elem) {
-	            var $elem = $(elem),
-	                top = $elem.offset().top,
-	                height = $elem.height(),
-	                bottom = top + height;
 
-	            var $elements = $elem.find('[data-relativity-movement]'),
+            // then we'll search in that for all the containers using the selector defined in the options object as well
+        	this.$containers = this.$container.find(this.options.containerSelector);
+
+        	// loop through all the relativity containers and cache their top and bottom positions
+	        this.$containers.each(function(index, containerElem) {
+
+	            var $containerElem = $(containerElem),
+	                top = $containerElem.offset().top,
+	                height = $containerElem.height(),
+	                bottom = top + height,
+                    $elements = $containerElem.find('[data-relativity-movement]'),
 	            	elements = [];
 
 	            $elements.each(function(index, elem) {
@@ -205,7 +242,7 @@ Relativity.prototype = {
 	            	});
 	            });
 
-	            self.containers.push({
+	            containers.push({
 	                top: top,
 	                bottom: bottom,
 	                height: height,
@@ -216,9 +253,9 @@ Relativity.prototype = {
 	        });
         }
 
-        // Cache the length of the array
+        // Cache the containers and the length of the array to use in 'for' loops
+        this.containers = containers;
         this.containersLength = this.containers.length;
-        
     },
 
     /**
@@ -229,14 +266,14 @@ Relativity.prototype = {
     *   @method updateElements
     *   @return {undefined}
     */
-    updateElements: function() {
+    updateElements: function(forceRecalculation) {
         var viewPortOffset = this.getViewportOffset(),
             topOffset = viewPortOffset.top,
             bottomOffset = topOffset + this.viewPortSize.height,
             scrollDirection = 'down';
 
-        // check to see if the screen has moved at all since the last frame
-        if(this.viewPortOffset.top !== viewPortOffset.top || !this.isInit) {
+        // check to see if the screen has moved at all since the last frame or if we are forcing it to recalculate
+        if(this.viewPortOffset.top !== viewPortOffset.top || forceRecalculation) {
             // we assumed the user is scrolling down but lets verify and set it to down if we were wrong
             if(this.viewPortOffset.top > viewPortOffset.top) {
                 scrollDirection = 'up';
@@ -254,9 +291,15 @@ Relativity.prototype = {
                         containerOffset = container.top - maxTopOffset, // where the container is within that range
                         percentage = 1 - containerOffset / offsetRange;  // the percentage of the way through the range
 
+                    container.onscreen = true;
                     this.triggerContainerOnScreen(container, percentage);
                 } else {
-                    this.triggerContainerOffScreen(container, scrollDirection);
+                    if (container.onscreen) {
+                        // once the container is off screen we want to fire off a last on screen event with a 0 or 100 percentage and then an off screen event
+                        container.$element.trigger('relativity:onscreen', container, (scrollDirection === 'down' ? 1 : 0));
+                        this.triggerContainerOffScreen(container, scrollDirection);
+                        container.onscreen = false;
+                    }
                 }
             }
         }
@@ -264,7 +307,7 @@ Relativity.prototype = {
     },
 
     /**
-    *   This function triggers an event on this object that can be listened to.  It sends along an object
+    *   This function triggers an event on this object that can be listened to.  It sends along objects
     *   with some useful information.
     *
     *   @method triggerContainerOnScreen
@@ -272,7 +315,7 @@ Relativity.prototype = {
     */
     triggerContainerOnScreen: function(container, percentage) {
     	container.$element.addClass('relativity-onscreen');
-        container.$element.trigger('relativity:onscreen', percentage);
+        container.$element.trigger('relativity:onscreen', container, percentage);
         
         // move the elements we defined as having a relativity movement
         for (var i = 0; i < container.elementsCount; i++) {
@@ -301,35 +344,7 @@ Relativity.prototype = {
     */
     triggerContainerOffScreen: function(container, direction) {
         container.$element.removeClass('relativity-onscreen');
-        container.$element.trigger('relativity:offscreen', direction);
-    },
-
-    /**
-    *   Enables Relativity!  If Relativity hasn't been initialized it takes care of that
-    *   or if it has been then it enables all the waypoints.
-    *
-    *   @method initRelativity
-    *   @return {undefined}
-    */
-    enable: function() {
-        if(this.isSupported) {
-            if(!this.isInit) {
-                this.init();
-            } else {
-                this.initEvents();
-            }
-        }
-    },
-
-    /**
-    *   Disables Relativity... Just turns off the events for now.  If you really want to kill Relativity
-    *   then run uninitialize.
-    *
-    *   @method disable
-    *   @return {undefined}
-    */
-    disable: function() {
-        this.removeEvents();
+        container.$element.trigger('relativity:offscreen', container, direction);
     },
 
     /**
@@ -352,7 +367,8 @@ Relativity.prototype = {
             $(window).scroll($.proxy(this.onWindowScroll, this));
         }
 
-        $(window).resize($.proxy(this.onWindowResize, this));
+        // listen to screen resize events that might change the height of the screen
+        $(window).resize($.proxy(this.onUpdateRelativity, this));
     },
 
     /**
@@ -362,8 +378,18 @@ Relativity.prototype = {
     *   @return {undefined}
     */
     onWindowScroll: function(event) {
-        this.isScrolling = true;
         this.updateElements();
+    },
+
+    /**
+    *   This is the event handler for the 'relativity:update' event.
+    *
+    *   @method onUpdateRelativity
+    *   @return {undefined}
+    */
+    onUpdateRelativity: function(event) {
+        this.updateVariables();
+        this.updateElements(true);
     },
 
     /**
@@ -375,27 +401,6 @@ Relativity.prototype = {
     requestAnimFrameLoop: function() {
         this.updateElements();
         window.requestAnimationFrame(this.requestAnimFrameLoop.bind(this));
-    },
-
-    /**
-    *   On Window scroll resize handler
-    *
-    *   @method uninitialize
-    *   @return {undefined}
-    */
-    onWindowResize: function(event) {
-        this.updateVariables();
-    },
-
-    /**
-    *   This is the event handler for the 'relativity:update' event.
-    *
-    *   @method onUpdateRelativity
-    *   @return {undefined}
-    */
-    onUpdateRelativity: function(event) {
-        this.updateVariables();
-        this.updateElements();
     },
 
     /**
@@ -526,29 +531,6 @@ Relativity.prototype = {
     },
 
     /**
-    *   Remove event listeners
-    *
-    *   @method uninitialize
-    *   @return {undefined}
-    */
-    removeEvents: function() {
-        $(document).off('relativity:update', $.proxy(this.onUpdateRelativity, this));
-        $(window).off('scroll', $.proxy(this.onWindowScroll, this));
-        $(window).off('resize', $.proxy(this.onWindowResize, this));
-    },
-
-    /**
-    *   Remove event listeners
-    *
-    *   @method uninitialize
-    *   @return {undefined}
-    */
-    uninitialize: function() {
-        // Unbind all bound events.
-        this.removeEvents();
-    },
-
-    /**
     *   calculate the size of the viewport
     *
     *   @method getViewportSize
@@ -588,14 +570,32 @@ Relativity.prototype = {
         };
     },
 
+    /**
+    *   Sets the left CSS position property
+    *
+    *   @method setLeft
+    *   @return {undefined}
+    */
     setLeft: function($elem, left) { 
         $elem.css('left', left); 
     },
     
+    /**
+    *   Sets the top CSS position property
+    *
+    *   @method setTop
+    *   @return {undefined}
+    */
     setTop: function($elem, top) { 
         $elem.css('top', top); 
     },
     
+    /**
+    *   Sets the transform CSS3 property
+    *
+    *   @method setTransform
+    *   @return {undefined}
+    */
     setTransform: function($elem, left, startingLeft, top, startingTop) {
         if(this.options.supports3D) {
             // 3d transformations - Much faster
@@ -622,6 +622,12 @@ Relativity.prototype = {
         return delta;
     },
 
+    /**
+    *   Extends one object with another. Used for overriding default options with passed in values.
+    *
+    *   @method extend
+    *   @return {undefined}
+    */
     extend: function (obj, src) {
         for (var key in src) {
             if (src.hasOwnProperty(key)) obj[key] = src[key];
@@ -629,7 +635,35 @@ Relativity.prototype = {
         return obj;
     },
 
-    // Returns a function which adds a vendor prefix to any CSS property name
+    /**
+    *   Remove event listeners
+    *
+    *   @method uninitialize
+    *   @return {undefined}
+    */
+    removeEvents: function() {
+        $(document).off('relativity:update', $.proxy(this.onUpdateRelativity, this));
+        $(window).off('scroll', $.proxy(this.onWindowScroll, this));
+        $(window).off('resize', $.proxy(this.onUpdateRelativity, this));
+    },
+
+    /**
+    *   Remove event listeners
+    *
+    *   @method uninitialize
+    *   @return {undefined}
+    */
+    uninitialize: function() {
+        // Unbind all bound events.
+        this.removeEvents();
+    },
+
+    /**
+    *   Returns a function which adds a vendor prefix to any CSS property 
+    *
+    *   @method vendorPrefix
+    *   @return {undefined}
+    */
     vendorPrefix: (function() {
         var prefixes = /^(Moz|Webkit|Khtml|O|ms|Icab)(?=[A-Z])/,
             style = $('script')[0].style,
