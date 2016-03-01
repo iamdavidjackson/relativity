@@ -64,3 +64,9 @@ $('.myContainer').on('relativity:offscreen', function(event, container, directio
 });
 ```
 
+### Update Elements
+Relativity needs to know a few things about the page height and screen size in order to accurately calculate which elements are on screen.  It already includes a listener to detect screen resize events however these don't detect changes to the height of the page if something is added to the DOM.  If you add anything to the DOM or adjust the height of an element dynamically you will need to ask Relativity to recalculate everything.  It's super simple though, just trigger an event on the document like this:
+
+```
+$(document).trigger('relativity:update');
+```
